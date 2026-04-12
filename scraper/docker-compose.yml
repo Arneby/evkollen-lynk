@@ -1,6 +1,6 @@
 services:
   scraper:
-    image: ghcr.io/arneby/evkollen-scraper:latest
+    image: ghcr.io/arneby/evkollen-lynk-scraper:latest
     restart: "no"
     environment:
       WORKER_URL: ${WORKER_URL}

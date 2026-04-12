@@ -32,4 +32,4 @@ jobs:
           context: .
           file: Dockerfile.scraper
           push: true
-          tags: ghcr.io/arneby/evkollen-scraper:latest
+          tags: ghcr.io/arneby/evkollen-lynk-scraper:latest

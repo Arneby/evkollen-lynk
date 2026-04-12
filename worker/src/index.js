@@ -1,5 +1,3 @@
-import { runScraper } from './scraper.js';
-
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
@@ -7,22 +5,8 @@ const CORS = {
 };
 
 export default {
-  // Körs enligt cron-schema i wrangler.toml
-  async scheduled(event, env, ctx) {
-    ctx.waitUntil(runScraper(env));
-  },
-
   async fetch(request, env) {
     const url = new URL(request.url);
-
-    // Manuell trigger: GET /scrape?secret=...
-    if (url.pathname === '/scrape' && request.method === 'GET') {
-      if (request.headers.get('X-Secret') !== env.WORKER_SECRET) {
-        return new Response('Unauthorized', { status: 401 });
-      }
-      const result = await runScraper(env);
-      return Response.json(result, { headers: CORS });
-    }
 
     if (request.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: CORS });
