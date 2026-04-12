@@ -7,3 +7,6 @@ account_id = "9470477318f84f079a2849a9bfdb85f1"
 binding = "DB"
 database_name = "evkollen-lynk"
 database_id = "2100ec62-89ed-4a61-a0c5-c28fecfb2c67"
+
+[triggers]
+crons = ["0 6 * * *"]  # Varje dag kl 06:00 UTC
