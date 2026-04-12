@@ -1,0 +1,84 @@
+models:
+  - id: lynk-01-phev-more
+    make: Lynk & Co
+    model: "01"
+    variant: More
+    powertrain: phev
+    year: 2025
+    sources:
+      coches_net:
+        make_id: 1404
+        model_id: 1336
+        filter:
+          include: ["More"]
+      bytbil:
+        make: "Lynk & Co"
+        model: "01"
+        filter:
+          include: ["More"]
+      subito:
+        query: "Lynk 01 PHEV More"
+        filter:
+          include: ["01", "More"]
+      autoscout:
+        make_slug: "lynk-%26-co"
+        model_slug: "01"
+        fuel_type: "H"
+        filter:
+          include: ["More"]
+
+  - id: lynk-02-phev-more
+    make: Lynk & Co
+    model: "02"
+    variant: More
+    powertrain: phev
+    year: 2025
+    sources:
+      coches_net:
+        make_id: 1404
+        model_id: 1601
+        filter:
+          include: ["More"]
+      bytbil:
+        make: "Lynk & Co"
+        model: "02"
+        filter:
+          include: ["More"]
+      subito:
+        query: "Lynk 02 PHEV More"
+        filter:
+          include: ["02", "More"]
+      autoscout:
+        make_slug: "lynk-%26-co"
+        model_slug: "02"
+        fuel_type: "H"
+        filter:
+          include: ["More"]
+
+  - id: lynk-08-phev-more
+    make: Lynk & Co
+    model: "08"
+    variant: More
+    powertrain: phev
+    year: 2025
+    sources:
+      coches_net:
+        make_id: 1404
+        model_id: 1625
+        filter:
+          include: ["More"]
+      bytbil:
+        make: "Lynk & Co"
+        model: "08"
+        filter:
+          include: ["More"]
+      subito:
+        query: "Lynk 08 PHEV"
+        filter:
+          include: ["08"]
+      autoscout:
+        make_slug: "lynk-%26-co"
+        model_slug: "08"
+        fuel_type: "H"
+        filter:
+          include: ["More"]

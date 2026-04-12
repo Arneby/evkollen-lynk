@@ -1,0 +1,402 @@
+---
+const WORKER_URL = 'https://evkollen-worker.gurka.workers.dev';
+---
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EV Kollen</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/victor-mono@1.5.6/VictorMonoAll.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.54.0/dist/apexcharts.min.js"></script>
+  <style is:global>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Victor Mono', 'Fira Code', 'JetBrains Mono', monospace;
+      background: #f5f5f5;
+      color: #1a1a1a;
+      font-size: 13px;
+    }
+
+    header {
+      background: #1a1a2e;
+      color: white;
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: baseline;
+      gap: 0.75rem;
+    }
+    header h1 { font-size: 1.3rem; font-weight: 700; letter-spacing: -0.02em; }
+    header span { font-size: 0.8rem; opacity: 0.45; }
+
+    main { max-width: 1100px; margin: 0 auto; padding: 2rem; }
+
+    .tabs {
+      display: flex;
+      gap: 0.25rem;
+      margin-bottom: 1.5rem;
+      border-bottom: 2px solid #e0e0e0;
+    }
+    .tab {
+      padding: 0.5rem 1.2rem;
+      border: none;
+      background: none;
+      cursor: pointer;
+      font-size: 0.9rem;
+      color: #666;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      font-family: inherit;
+    }
+    .tab.active { color: #1a1a2e; border-bottom-color: #1a1a2e; font-weight: 600; }
+    .tab:hover:not(.active) { color: #333; }
+
+    .stats-bar {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+    .stat {
+      background: white;
+      border-radius: 8px;
+      padding: 0.8rem 1.2rem;
+      flex: 1;
+      min-width: 120px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .stat-label { font-size: 0.7rem; color: #999; text-transform: uppercase; letter-spacing: 0.05em; }
+    .stat-value { font-size: 1.4rem; font-weight: 700; margin-top: 0.2rem; color: #1a1a2e; }
+
+    .table-wrap { overflow-x: auto; }
+    .table-wrap .updated {
+      font-size: 0.72rem;
+      color: #bbb;
+      margin-top: 0.6rem;
+      text-align: right;
+    }
+
+    table {
+      width: 100%;
+      table-layout: fixed;
+      border-collapse: collapse;
+      background: white;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+
+    /* Kolumnbredder */
+    th:nth-child(1) { width: 40%; } /* Annons */
+    th:nth-child(2) { width: 15%; } /* Pris */
+    th:nth-child(3) { width:  9%; } /* År */
+    th:nth-child(4) { width: 12%; } /* Km */
+    th:nth-child(5) { width: 12%; } /* Sedd */
+    th:nth-child(6) { width: 12%; } /* Senast */
+
+    thead tr { background: #1a1a2e; color: white; }
+    th {
+      padding: 0.9rem 1.2rem;
+      text-align: left;
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 700;
+      cursor: pointer;
+      user-select: none;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    th:hover { background: #252545; }
+    th.sorted-asc::after  { content: ' ↑'; opacity: 0.6; }
+    th.sorted-desc::after { content: ' ↓'; opacity: 0.6; }
+
+    td {
+      padding: 0.85rem 1.2rem;
+      border-bottom: 1px solid #f0f0f0;
+      vertical-align: middle;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #fafafa; }
+
+    .price { font-weight: 700; font-size: 1rem; letter-spacing: -0.02em; }
+    .year-badge {
+      display: inline-block;
+      background: #eef2ff;
+      color: #3b4ea6;
+      border-radius: 4px;
+      padding: 0.15rem 0.5rem;
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+    .muted { color: #888; }
+    .num   { text-align: right; font-variant-numeric: tabular-nums; }
+    a.ad-link { color: #3b4ea6; text-decoration: none; font-weight: 600; }
+    a.ad-link:hover { text-decoration: underline; }
+
+    .loading { text-align: center; padding: 3rem; color: #aaa; }
+
+    .chart-card {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      padding: 1.2rem 1.5rem 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .chart-card h2 {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #999;
+      margin-bottom: 0.8rem;
+    }
+    .chart-card > div { min-height: 260px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>EV Kollen</h1>
+    <span>KM0 · Spanien</span>
+  </header>
+
+  <main>
+    <div class="tabs" id="tabs"></div>
+    <div class="stats-bar" id="stats"></div>
+    <div class="chart-card" id="chart-card" style="display:none">
+      <h2>Snittpris per marknad (€)</h2>
+      <div id="price-chart"></div>
+    </div>
+    <div id="table-container"><div class="loading">Laddar...</div></div>
+  </main>
+
+  <script define:vars={{ WORKER_URL }}>
+    const MODELS = [
+      { id: 'lynk-01-phev-more',      label: 'Lynk 01 More' },
+      { id: 'lynk-08-phev-more',      label: 'Lynk 08 More' },
+      { id: 'rr-evoque-p300e',        label: 'Evoque P300e' },
+      { id: 'lr-disco-sport-p300e',   label: 'Disco Sport P300e' },
+      { id: 'citroen-ec5-aircross-ev', label: 'eC5 Aircross' },
+      { id: 'bmw-ix3-g08',            label: 'BMW iX3' },
+      { id: 'vw-id4',                 label: 'VW ID.4' },
+    ];
+
+    const SOURCE_META = {
+      coches_net: { flag: '🇪🇸', color: '#e6a817', name: 'Spanien',   markerStroke: '#e6a817' },
+      wayke:      { flag: '🇸🇪', color: '#2563eb', name: 'Wayke',     markerStroke: '#2563eb' },
+      bytbil:     { flag: '🇸🇪', color: '#2563eb', name: 'Bytbil',    markerStroke: '#2563eb' },
+      sverige:    { flag: '🇸🇪', color: '#2563eb', name: 'Sverige',   markerStroke: '#2563eb' },
+      subito:     { flag: '🇮🇹', color: '#dc2626', name: 'Subito.it',    markerStroke: '#dc2626' },
+      autoscout:  { flag: '🇩🇪', color: '#16a34a', name: 'AutoScout24', markerStroke: '#16a34a' },
+    };
+
+    let allData = {};
+    let historyData = {};
+    const _urlModel = new URLSearchParams(location.search).get('model');
+    let activeModel = MODELS.find(m => m.id === _urlModel)?.id ?? MODELS[0].id;
+    let sortCol = 'price_eur';
+    let sortDir = 'asc';
+    let priceChart = null;
+
+    const COLS = [
+      { key: 'price_eur',  label: 'Pris (€)', cls: 'col-price' },
+      { key: 'year',       label: 'År',        cls: 'col-year' },
+      { key: 'km',         label: 'Km',        cls: 'col-km', thClass: 'num' },
+      { key: 'first_seen', label: 'Sedd',      cls: 'col-seen' },
+      { key: 'last_seen',  label: 'Senast',    cls: 'col-lastseen' },
+    ];
+
+    function fmt(n) {
+      return n != null ? Number(n).toLocaleString('sv-SE') : '–';
+    }
+
+    function fmtKm(n) {
+      return n != null ? Number(n).toLocaleString('sv-SE').replace(/\s/g, '') : '–';
+    }
+
+    function fmtDate(s) {
+      if (!s) return '–';
+      const [y, m, d] = s.split('-');
+      return `${y.slice(2)}.${m}.${d}`;
+    }
+
+    function renderTabs() {
+      const el = document.getElementById('tabs');
+      el.innerHTML = MODELS.map(m => {
+        const count = allData[m.id] ? ` (${allData[m.id].length})` : '';
+        return `<button class="tab ${m.id === activeModel ? 'active' : ''}" data-id="${m.id}">${m.label}${count}</button>`;
+      }).join('');
+      el.querySelectorAll('.tab').forEach(btn =>
+        btn.addEventListener('click', () => { activeModel = btn.dataset.id; render(); })
+      );
+    }
+
+    function renderStats(listings) {
+      const prices = listings.map(l => l.price_eur ?? l.price).filter(Boolean);
+      const kms = listings.map(l => l.km).filter(v => v != null);
+      const avg = arr => arr.length ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length) : null;
+      document.getElementById('stats').innerHTML = [
+        { label: 'Annonser',   value: listings.length },
+        { label: 'Lägsta',     value: prices.length ? '€' + fmt(Math.min(...prices)) : '–' },
+        { label: 'Högsta',     value: prices.length ? '€' + fmt(Math.max(...prices)) : '–' },
+        { label: 'Snittpris',  value: prices.length ? '€' + fmt(avg(prices)) : '–' },
+        { label: 'Snitt km',   value: kms.length   ? fmt(avg(kms)) + ' km' : '–' },
+      ].map(s => `<div class="stat"><div class="stat-label">${s.label}</div><div class="stat-value">${s.value}</div></div>`).join('');
+    }
+
+    function renderTable(listings) {
+      const sorted = [...listings].sort((a, b) => {
+        let av = a[sortCol], bv = b[sortCol];
+        if (av == null) return 1;
+        if (bv == null) return -1;
+        return sortDir === 'asc' ? (av > bv ? 1 : -1) : (av < bv ? 1 : -1);
+      });
+
+      document.getElementById('table-container').innerHTML = `
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>Annons</th>
+              ${COLS.map(c => `<th data-key="${c.key}" class="${[sortCol === c.key ? 'sorted-' + sortDir : '', c.thClass || ''].join(' ').trim()}">${c.label}</th>`).join('')}
+            </tr></thead>
+            <tbody>
+              ${sorted.map(l => `<tr>
+                <td title="${l.title}"><a class="ad-link" href="/annons?id=${encodeURIComponent(l.id)}&model_id=${encodeURIComponent(activeModel)}">${SOURCE_META[l.source]?.flag ?? ''} ${l.title}</a></td>
+                <td class="price">€${fmt(l.price_eur ?? l.price)}</td>
+                <td><span class="year-badge">${l.year ?? '–'}</span></td>
+                <td class="muted num">${fmtKm(l.km)}</td>
+                <td class="muted">${fmtDate(l.first_seen)}</td>
+                <td class="muted">${fmtDate(l.last_seen)}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+          <p class="updated">Uppdaterat: ${new Date().toLocaleString('sv-SE')}</p>
+        </div>`;
+
+      document.querySelectorAll('th[data-key]').forEach(th =>
+        th.addEventListener('click', () => {
+          sortDir = sortCol === th.dataset.key && sortDir === 'asc' ? 'desc' : 'asc';
+          sortCol = th.dataset.key;
+          renderTable(allData[activeModel] || []);
+        })
+      );
+    }
+
+    function renderChart(modelId) {
+      const history = historyData[modelId] || [];
+      const card = document.getElementById('chart-card');
+
+      if (history.length < 1) { card.style.display = 'none'; return; }
+      card.style.display = '';
+
+      const SWEDISH_SOURCES = new Set(['wayke', 'bytbil']);
+      const normalised = history.map(r =>
+        SWEDISH_SOURCES.has(r.source) ? { ...r, source: 'sverige' } : r
+      );
+
+      const days = [...new Set(normalised.map(r => r.day))].sort();
+      const sources = [...new Set(normalised.map(r => r.source))];
+
+      const series = sources.map(src => {
+        const meta = SOURCE_META[src] || { flag: '', color: '#888', name: src };
+        const byDay = {};
+        for (const r of normalised.filter(r => r.source === src)) {
+          if (!byDay[r.day]) byDay[r.day] = { sum: 0, n: 0 };
+          byDay[r.day].sum += r.avg_price_eur * r.count;
+          byDay[r.day].n   += r.count;
+        }
+        return {
+          name: `${meta.flag} ${meta.name ?? src}`,
+          data: days.map(d => byDay[d] ? Math.round(byDay[d].sum / byDay[d].n) : null),
+        };
+      });
+
+      const colors        = sources.map(src => (SOURCE_META[src] || { color: '#888' }).color);
+      const markerStrokes = sources.map(src => (SOURCE_META[src] || { markerStroke: '#888' }).markerStroke);
+
+      if (priceChart) { priceChart.destroy(); priceChart = null; }
+
+      priceChart = new ApexCharts(document.getElementById('price-chart'), {
+        chart: {
+          type: 'line',
+          height: 280,
+          toolbar: { show: false },
+          fontFamily: "'Victor Mono', monospace",
+          animations: { enabled: false },
+          background: 'transparent',
+        },
+        series,
+        colors,
+        stroke: { curve: 'smooth', width: 2.5 },
+        markers: {
+          size: 7,
+          strokeColors: markerStrokes,
+          strokeWidth: 3,
+          fillOpacity: 0,
+          hover: { size: 9, sizeOffset: 0 },
+        },
+        xaxis: {
+          categories: days,
+          labels: { style: { fontFamily: "'Victor Mono', monospace", fontSize: '12px' } },
+          axisBorder: { show: false },
+          axisTicks: { show: false },
+        },
+        yaxis: {
+          labels: {
+            formatter: v => v != null ? '€' + Math.round(v).toLocaleString('sv-SE') : '',
+            style: { fontFamily: "'Victor Mono', monospace", fontSize: '12px' },
+          },
+        },
+        tooltip: {
+          shared: true,
+          intersect: false,
+          y: { formatter: v => v != null ? '€' + Math.round(v).toLocaleString('sv-SE') : '–' },
+          style: { fontFamily: "'Victor Mono', monospace", fontSize: '12px' },
+        },
+        legend: {
+          show: true,
+          fontFamily: "'Victor Mono', monospace",
+          fontSize: '13px',
+          position: 'bottom',
+          itemMargin: { horizontal: 12 },
+        },
+        dataLabels: { enabled: false },
+        grid: {
+          borderColor: '#ebebeb',
+          strokeDashArray: 4,
+          padding: { top: 4, right: 16, bottom: 0, left: 8 },
+        },
+      });
+      priceChart.render();
+    }
+
+    function render() {
+      renderTabs();
+      const listings = allData[activeModel] || [];
+      renderStats(listings);
+      renderChart(activeModel);
+      renderTable(listings);
+    }
+
+    async function init() {
+      renderTabs();
+      await Promise.all(MODELS.map(async m => {
+        const [listRes, histRes] = await Promise.all([
+          fetch(`${WORKER_URL}/listings?model_id=${m.id}`),
+          fetch(`${WORKER_URL}/price-history?model_id=${m.id}`),
+        ]);
+        const [listJson, histJson] = await Promise.all([listRes.json(), histRes.json()]);
+        allData[m.id] = listJson.listings || [];
+        historyData[m.id] = histJson.history || [];
+      }));
+      render();
+    }
+
+    init();
+  </script>
+</body>
+</html>

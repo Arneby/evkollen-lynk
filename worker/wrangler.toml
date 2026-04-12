@@ -1,0 +1,9 @@
+name = "evkollen-lynk-worker"
+main = "src/index.js"
+compatibility_date = "2024-09-23"
+account_id = "9470477318f84f079a2849a9bfdb85f1"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "evkollen-lynk"
+database_id = "2100ec62-89ed-4a61-a0c5-c28fecfb2c67"

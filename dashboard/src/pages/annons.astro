@@ -1,0 +1,226 @@
+---
+const WORKER_URL = 'https://evkollen-worker.gurka.workers.dev';
+---
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EV Kollen · Annons</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/victor-mono@1.5.6/VictorMonoAll.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <style is:global>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Victor Mono', monospace;
+      background: #f5f5f5;
+      color: #1a1a1a;
+      font-size: 13px;
+    }
+    header {
+      background: #1a1a2e;
+      color: white;
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: baseline;
+      gap: 0.75rem;
+    }
+    header a { color: white; text-decoration: none; font-size: 1.3rem; font-weight: 700; letter-spacing: -0.02em; }
+    header a:hover { text-decoration: underline; }
+    header span { font-size: 0.8rem; opacity: 0.45; }
+
+    main { max-width: 700px; margin: 0 auto; padding: 2rem; }
+
+    .back { font-size: 0.8rem; color: #888; text-decoration: none; display: inline-block; margin-bottom: 1.5rem; }
+    .back:hover { color: #333; }
+
+    .card {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      overflow: hidden;
+    }
+    .card-header {
+      background: #1a1a2e;
+      color: white;
+      padding: 1.2rem 1.8rem;
+    }
+    .card-header .title    { font-size: 1rem; font-weight: 700; }
+    .card-header .version  { font-size: 0.78rem; opacity: 0.6; margin-top: 0.2rem; letter-spacing: 0.04em; text-transform: uppercase; }
+    .card-header .price { font-size: 1.8rem; font-weight: 700; margin-top: 0.3rem; letter-spacing: -0.03em; }
+    .card-img { width: 100%; max-height: 260px; object-fit: cover; display: block; }
+
+    .fields { padding: 0.5rem 0; }
+    .field {
+      display: flex;
+      padding: 0.7rem 1.8rem;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .field:last-child { border-bottom: none; }
+    .field-label {
+      width: 160px;
+      flex-shrink: 0;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #999;
+      padding-top: 0.1rem;
+    }
+    .coches-link {
+      display: inline-block;
+      margin: 1.5rem 1.8rem;
+      padding: 0.6rem 1.2rem;
+      background: #1a1a2e;
+      color: white;
+      text-decoration: none;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-weight: 600;
+    }
+    .coches-link:hover { background: #252545; }
+    .loading { padding: 3rem; text-align: center; color: #aaa; }
+    .error   { padding: 2rem; color: #c00; }
+    .chart-card {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      padding: 1.2rem 1.5rem 1rem;
+      margin-top: 1rem;
+    }
+    .chart-card h2 {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #999;
+      margin-bottom: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <a href="/">EV Kollen</a>
+    <span>KM0 · Spanien</span>
+  </header>
+
+  <main>
+    <a class="back" id="back-link" href="/">← Tillbaka</a>
+    <script>
+      const modelId = new URLSearchParams(location.search).get('model_id');
+      if (modelId) document.getElementById('back-link').href = `/?model=${encodeURIComponent(modelId)}`;
+    </script>
+    <div id="content"><div class="loading">Laddar...</div></div>
+  </main>
+
+  <script define:vars={{ WORKER_URL }}>
+    function fmt(n) {
+      return n != null ? Number(n).toLocaleString('sv-SE') : '–';
+    }
+    function fmtDate(s) {
+      if (!s) return '–';
+      const [y, m, d] = s.split('-');
+      return `${y.slice(2)}.${m}.${d}`;
+    }
+
+    async function init() {
+      const id = new URLSearchParams(window.location.search).get('id');
+      if (!id) {
+        document.getElementById('content').innerHTML = `<div class="error">Inget annons-ID angivet.</div>`;
+        return;
+      }
+
+      const res = await fetch(`${WORKER_URL}/listing?id=${encodeURIComponent(id)}`);
+      const json = await res.json();
+
+      if (!res.ok || !json.listing) {
+        document.getElementById('content').innerHTML = `<div class="error">Annonsen hittades inte.</div>`;
+        return;
+      }
+
+      const l = json.listing;
+      document.title = `EV Kollen · ${l.title}`;
+
+      const fields = [
+        { label: 'År',             value: l.year ?? '–' },
+        { label: 'Km',             value: l.km != null ? Number(l.km).toLocaleString('sv-SE').replace(/\s/g, '') : '–' },
+        { label: 'Provins',        value: l.province ?? '–' },
+        { label: 'Återförsäljare', value: l.dealer_name ?? '–' },
+        { label: 'Sedd',           value: fmtDate(l.first_seen) },
+        { label: 'Senast sedd',    value: fmtDate(l.last_seen) },
+      ];
+
+      const SOURCE_LABELS = {
+        wayke:     'Visa på Wayke.se →',
+        bytbil:    'Visa på Bytbil.com →',
+        subito:    'Visa på Subito.it →',
+        autoscout: 'Visa på AutoScout24.de →',
+      };
+      const linkLabel = SOURCE_LABELS[l.source] ?? 'Visa annons →';
+
+      document.getElementById('content').innerHTML = `
+        <div class="card">
+          ${l.image_url ? `<img class="card-img" src="${l.image_url}" alt="${l.title}" loading="lazy">` : ''}
+          <div class="card-header">
+            <div class="title">${l.title}</div>
+            ${l.version ? `<div class="version">${l.version}</div>` : ''}
+            <div class="price">€${fmt(l.price_eur ?? l.price)}</div>
+          </div>
+          <div class="fields">
+            ${fields.map(f => `
+              <div class="field">
+                <div class="field-label">${f.label}</div>
+                <div class="field-value">${f.value}</div>
+              </div>`).join('')}
+          </div>
+          <a class="coches-link" href="${l.url}" target="_blank" rel="noopener">${linkLabel}</a>
+        </div>
+        <div class="chart-card" id="chart-card" style="display:none">
+          <h2>Prisutveckling (€)</h2>
+          <canvas id="price-chart" height="80"></canvas>
+        </div>`;
+
+      // Fetch and render price history
+      const snapRes = await fetch(`${WORKER_URL}/snapshots?listing_id=${encodeURIComponent(id)}`);
+      const snapJson = await snapRes.json();
+      const snaps = (snapJson.snapshots || []).filter(s => s.price_eur != null);
+
+      if (snaps.length >= 2) {
+        document.getElementById('chart-card').style.display = '';
+        new Chart(document.getElementById('price-chart'), {
+          type: 'line',
+          data: {
+            labels: snaps.map(s => s.scraped_at.split('T')[0]),
+            datasets: [{
+              label: 'Pris (€)',
+              data: snaps.map(s => s.price_eur),
+              borderColor: '#3b4ea6',
+              backgroundColor: '#3b4ea620',
+              tension: 0.3,
+              pointRadius: 3,
+            }],
+          },
+          options: {
+            responsive: true,
+            scales: {
+              x: { ticks: { font: { family: 'Victor Mono, monospace', size: 11 } } },
+              y: {
+                ticks: {
+                  font: { family: 'Victor Mono, monospace', size: 11 },
+                  callback: v => '€' + v.toLocaleString('sv-SE'),
+                },
+              },
+            },
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: { label: ctx => `€${ctx.parsed.y?.toLocaleString('sv-SE')}` },
+              },
+            },
+          },
+        });
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+{
+  "name": "evkollen-scraper",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "scrape": "node scraper.mjs",
+    "scrape:dry": "node scraper.mjs --dry-run"
+  },
+  "dependencies": {
+    "js-yaml": "^4.1.0"
+  }
+}
