@@ -182,12 +182,12 @@ const WORKER_URL = 'https://evkollen-lynk-worker.gurka.workers.dev';
     ];
 
     const SOURCE_META = {
-      coches_net: { flag: '🇪🇸', color: '#e6a817', name: 'Spanien',   markerStroke: '#e6a817' },
-      wayke:      { flag: '🇸🇪', color: '#2563eb', name: 'Wayke',     markerStroke: '#2563eb' },
-      bytbil:     { flag: '🇸🇪', color: '#2563eb', name: 'Bytbil',    markerStroke: '#2563eb' },
-      sverige:    { flag: '🇸🇪', color: '#2563eb', name: 'Sverige',   markerStroke: '#2563eb' },
-      subito:     { flag: '🇮🇹', color: '#dc2626', name: 'Subito.it',    markerStroke: '#dc2626' },
-      autoscout:  { flag: '🇩🇪', color: '#16a34a', name: 'AutoScout24', markerStroke: '#16a34a' },
+      coches_net: { flag: '🇪🇸', color: '#e6a817', country: 'Spanien', sourcesLabel: 'coches.net',      markerStroke: '#e6a817' },
+      wayke:      { flag: '🇸🇪', color: '#2563eb', country: 'Sverige', sourcesLabel: 'Wayke',            markerStroke: '#2563eb' },
+      bytbil:     { flag: '🇸🇪', color: '#2563eb', country: 'Sverige', sourcesLabel: 'Bytbil',           markerStroke: '#2563eb' },
+      sverige:    { flag: '🇸🇪', color: '#2563eb', country: 'Sverige', sourcesLabel: 'Wayke + Bytbil',   markerStroke: '#2563eb' },
+      subito:     { flag: '🇮🇹', color: '#dc2626', country: 'Italien', sourcesLabel: 'Subito.it',        markerStroke: '#dc2626' },
+      autoscout:  { flag: '🇩🇪', color: '#16a34a', country: 'Tyskland', sourcesLabel: 'AutoScout24',     markerStroke: '#16a34a' },
     };
 
     let allData = {};
@@ -306,10 +306,12 @@ const WORKER_URL = 'https://evkollen-lynk-worker.gurka.workers.dev';
           byDay[r.day].n   += r.count;
         }
         return {
-          name: `${meta.flag} ${meta.name ?? src}`,
+          name: `${meta.flag} ${meta.country ?? src}`,
           data: days.map(d => byDay[d] ? Math.round(byDay[d].sum / byDay[d].n) : null),
         };
       });
+
+      const sourcesLabels = sources.map(src => (SOURCE_META[src] || {}).sourcesLabel ?? src);
 
       const colors        = sources.map(src => (SOURCE_META[src] || { color: '#888' }).color);
       const markerStrokes = sources.map(src => (SOURCE_META[src] || { markerStroke: '#888' }).markerStroke);
@@ -368,6 +370,15 @@ const WORKER_URL = 'https://evkollen-lynk-worker.gurka.workers.dev';
         },
       });
       priceChart.render();
+
+      setTimeout(() => {
+        document.querySelectorAll('#price-chart .apexcharts-legend-series').forEach((el, i) => {
+          if (sourcesLabels[i]) {
+            el.setAttribute('title', sourcesLabels[i]);
+            el.style.cursor = 'help';
+          }
+        });
+      }, 100);
     }
 
     function render() {
