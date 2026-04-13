@@ -373,11 +373,20 @@ const WORKER_URL = 'https://evkollen-lynk-worker.gurka.workers.dev';
       priceChart.render();
 
       setTimeout(() => {
+        const tip = document.getElementById('legend-tip') || (() => {
+          const t = document.createElement('div');
+          t.id = 'legend-tip';
+          t.style.cssText = 'position:fixed;background:#1a1a2e;color:white;padding:3px 8px;border-radius:4px;font-size:11px;pointer-events:none;display:none;z-index:9999;font-family:"Victor Mono",monospace';
+          document.body.appendChild(t);
+          return t;
+        })();
+
         document.querySelectorAll('#price-chart .apexcharts-legend-series').forEach((el, i) => {
-          if (sourcesLabels[i]) {
-            el.setAttribute('title', sourcesLabels[i]);
-            el.style.cursor = 'help';
-          }
+          if (!sourcesLabels[i]) return;
+          el.style.cursor = 'help';
+          el.addEventListener('mouseenter', () => { tip.textContent = sourcesLabels[i]; tip.style.display = 'block'; });
+          el.addEventListener('mousemove', e => { tip.style.left = (e.clientX + 12) + 'px'; tip.style.top = (e.clientY - 28) + 'px'; });
+          el.addEventListener('mouseleave', () => { tip.style.display = 'none'; });
         });
       }, 100);
     }
