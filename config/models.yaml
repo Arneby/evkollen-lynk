@@ -3,6 +3,7 @@ models:
     make: Lynk & Co
     model: "01"
     variant: More
+    label: "Lynk 01 More"
     powertrain: phev
     year_from: 2025
     year_to: 2026
@@ -33,6 +34,7 @@ models:
     make: Lynk & Co
     model: "02"
     variant: More
+    label: "Lynk 02 More"
     powertrain: bev
     year_from: 2025
     year_to: 2026
@@ -63,6 +65,7 @@ models:
     make: Lynk & Co
     model: "08"
     variant: More
+    label: "Lynk 08 More"
     powertrain: phev
     year_from: 2025
     year_to: 2026

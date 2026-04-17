@@ -175,11 +175,7 @@ const WORKER_URL = 'https://evkollen-lynk-worker.gurka.workers.dev';
   </main>
 
   <script define:vars={{ WORKER_URL }}>
-    const MODELS = [
-      { id: 'lynk-01-phev-more',      label: 'Lynk 01 More' },
-      { id: 'lynk-02-bev-more',       label: 'Lynk 02 More' },
-      { id: 'lynk-08-phev-more',      label: 'Lynk 08 More' },
-    ];
+    let MODELS = [];
 
     const SOURCE_META = {
       coches_net: { flag: '🇪🇸', color: '#e6a817', country: 'Spanien', sourcesLabel: 'coches.net',      markerStroke: '#e6a817' },
@@ -192,8 +188,7 @@ const WORKER_URL = 'https://evkollen-lynk-worker.gurka.workers.dev';
 
     let allData = {};
     let historyData = {};
-    const _urlModel = new URLSearchParams(location.search).get('model');
-    let activeModel = MODELS.find(m => m.id === _urlModel)?.id ?? MODELS[0].id;
+    let activeModel = null;
     let sortCol = 'price_eur';
     let sortDir = 'asc';
     let priceChart = null;
@@ -448,6 +443,11 @@ const WORKER_URL = 'https://evkollen-lynk-worker.gurka.workers.dev';
     }
 
     async function init() {
+      const modelsRes = await fetch(`${WORKER_URL}/models`);
+      const modelsJson = await modelsRes.json();
+      MODELS = (modelsJson.models || []).map(m => ({ id: m.id, label: m.label || `${m.make} ${m.model}` }));
+      const _urlModel = new URLSearchParams(location.search).get('model');
+      activeModel = MODELS.find(m => m.id === _urlModel)?.id ?? MODELS[0]?.id ?? null;
       renderTabs();
       await Promise.all(MODELS.map(async m => {
         const [listRes, histRes] = await Promise.all([
