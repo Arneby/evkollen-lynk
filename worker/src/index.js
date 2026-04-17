@@ -47,6 +47,13 @@ export default {
       return handlePriceHistory(request, env);
     }
 
+    if (url.pathname === '/models' && request.method === 'GET') {
+      const { results } = await env.DB.prepare(
+        'SELECT id, make, model, powertrain, label FROM models ORDER BY rowid ASC'
+      ).all();
+      return Response.json({ models: results }, { headers: CORS });
+    }
+
     return new Response('Not found', { status: 404 });
   },
 };
@@ -59,9 +66,17 @@ async function handleIngest(request, env) {
     return Response.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
-  const { listings } = body;
+  const { listings, models } = body;
   if (!Array.isArray(listings)) {
     return Response.json({ error: 'listings must be an array' }, { status: 400 });
+  }
+
+  if (Array.isArray(models)) {
+    for (const m of models) {
+      await env.DB.prepare(
+        'INSERT OR REPLACE INTO models (id, make, model, powertrain, label) VALUES (?, ?, ?, ?, ?)'
+      ).bind(m.id, m.make, m.model, m.powertrain, m.label ?? null).run();
+    }
   }
 
   let inserted = 0;
