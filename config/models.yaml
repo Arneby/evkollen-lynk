@@ -29,11 +29,11 @@ models:
         filter:
           include: ["More"]
 
-  - id: lynk-02-phev-more
+  - id: lynk-02-bev-more
     make: Lynk & Co
     model: "02"
     variant: More
-    powertrain: phev
+    powertrain: bev
     year_from: 2025
     year_to: 2026
     sources:
@@ -55,7 +55,7 @@ models:
       autoscout:
         make_slug: "lynk-%26-co"
         model_slug: "02"
-        fuel_type: "H"
+        fuel_type: "E"
         filter:
           include: ["More"]
 
