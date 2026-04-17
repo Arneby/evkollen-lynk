@@ -139,17 +139,37 @@ async function handlePriceHistory(request, env) {
   }
 
   const { results } = await env.DB.prepare(`
-    SELECT
-      date(ps.scraped_at) AS day,
-      l.source,
-      ROUND(AVG(ps.price_eur)) AS avg_price_eur,
-      COUNT(*) AS count
-    FROM price_snapshots ps
-    JOIN listings l ON l.id = ps.listing_id
-    WHERE l.model_id = ?
-    GROUP BY day, l.source
-    ORDER BY day ASC
-  `).bind(modelId).all();
+    SELECT period, granularity, sort_key, source, avg_price_eur, count FROM (
+      SELECT
+        strftime('%Y-v%W', ps.scraped_at) AS period,
+        'week'                            AS granularity,
+        MIN(date(ps.scraped_at))          AS sort_key,
+        l.source,
+        ROUND(AVG(ps.price_eur))          AS avg_price_eur,
+        COUNT(*)                          AS count
+      FROM price_snapshots ps
+      JOIN listings l ON l.id = ps.listing_id
+      WHERE l.model_id = ?
+        AND strftime('%Y-%W', ps.scraped_at) != strftime('%Y-%W', date('now'))
+      GROUP BY strftime('%Y-v%W', ps.scraped_at), l.source
+
+      UNION ALL
+
+      SELECT
+        date(ps.scraped_at)  AS period,
+        'day'                AS granularity,
+        date(ps.scraped_at)  AS sort_key,
+        l.source,
+        ROUND(AVG(ps.price_eur)) AS avg_price_eur,
+        COUNT(*)             AS count
+      FROM price_snapshots ps
+      JOIN listings l ON l.id = ps.listing_id
+      WHERE l.model_id = ?
+        AND strftime('%Y-%W', ps.scraped_at) = strftime('%Y-%W', date('now'))
+      GROUP BY date(ps.scraped_at), l.source
+    )
+    ORDER BY sort_key ASC, period ASC
+  `).bind(modelId, modelId).all();
 
   return Response.json({ history: results }, { headers: CORS });
 }

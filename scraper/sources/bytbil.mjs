@@ -7,18 +7,18 @@ const HEADERS = {
   'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
 };
 
-function buildUrl(b, year, page) {
+function buildUrl(b, yearFrom, yearTo, page) {
   const params = new URLSearchParams({
     VehicleType: 'bil',
     Makes: b.make,
     Models: b.model,
-    'ModelYearRange.From': year,
-    'ModelYearRange.To': year,
+    'ModelYearRange.From': yearFrom,
+    'ModelYearRange.To': yearTo,
     'SortParams.SortField': 'publishedDate',
     'SortParams.IsAscending': 'False',
     Page: page,
   });
-  if (b.fuel_type) params.set('FuelTypes', b.fuel_type);
+  if (b.fuel_type) params.set('Fuels', b.fuel_type);
   if (b.mileage_max != null) params.set('MilageRange.To', b.mileage_max);
   return `${BASE_URL}/bil?${params}`;
 }
@@ -63,8 +63,8 @@ function extractCards(html) {
   return cards;
 }
 
-async function fetchPage(b, year, page) {
-  const url = buildUrl(b, year, page);
+async function fetchPage(b, yearFrom, yearTo, page) {
+  const url = buildUrl(b, yearFrom, yearTo, page);
   const res = await fetch(url, { headers: HEADERS });
   if (!res.ok) throw new Error(`bytbil HTTP ${res.status}`);
   return res.text();
@@ -72,11 +72,12 @@ async function fetchPage(b, year, page) {
 
 export async function scrape(model, b, rates) {
   const allListings = [];
-  const year = model.year ?? null;
+  const yearFrom = b._year_from ?? null;
+  const yearTo   = b._year_to   ?? null;
   let page = 1;
 
   while (true) {
-    const html = await fetchPage(b, year, page);
+    const html = await fetchPage(b, yearFrom, yearTo, page);
     const impressions = extractImpressions(html);
     const cards = extractCards(html);
 
@@ -105,8 +106,9 @@ export async function scrape(model, b, rates) {
       if (exclude.some(k => titleLc.includes(k.toLowerCase()))) continue;
 
       const cardYear = card.year ?? null;
-      // Require year match when model.year is set — also filters leasing ads (no year in card)
-      if (year && cardYear !== year) continue;
+      // Require year within range — also filters leasing ads (no year in card)
+      if (yearFrom && (cardYear === null || cardYear < yearFrom)) continue;
+      if (yearTo   && (cardYear === null || cardYear > yearTo))   continue;
 
       const versionKeywords = b.version_keywords || [];
       const version = versionKeywords.find(k => titleLc.includes(k.toLowerCase())) ?? null;

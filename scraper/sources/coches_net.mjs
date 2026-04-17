@@ -42,7 +42,7 @@ function buildRequestBody(cn, page = 1) {
       sellerTypeId: 0,
       transmissionTypeId: null,
       vehicles: [{ makeId: cn.make_id, modelId: cn.model_id, model: '', version: '' }],
-      year: { from: null, to: cn.year_to ?? null },
+      year: { from: cn._year_from ?? null, to: cn._year_to ?? null },
     },
   };
 }
@@ -89,7 +89,8 @@ export async function scrape(model, cn, rates) {
       const versionFilter = cn.version_filter || [];
       if (versionFilter.length && (!version || !versionFilter.some(f => version.toLowerCase().startsWith(f.toLowerCase())))) continue;
 
-      if (model.year && item.year !== model.year) continue;
+      if (cn._year_from && item.year < cn._year_from) continue;
+      if (cn._year_to   && item.year > cn._year_to)   continue;
       if (!item.price?.amount) continue;
 
       const url = item.url.startsWith('http') ? item.url : `https://www.coches.net${item.url}`;

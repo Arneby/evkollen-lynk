@@ -40,8 +40,8 @@ function parseYear(firstReg) {
 export async function scrape(model, s, rates) {
   const allListings = [];
   const year     = model.year ?? null;
-  const yearFrom = s.year_from ?? year;
-  const yearTo   = s.year_to   ?? year;
+  const yearFrom = s._year_from ?? year;
+  const yearTo   = s._year_to   ?? year;
   let page = 1;
   let totalPages = 1;
 

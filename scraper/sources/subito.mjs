@@ -47,11 +47,12 @@ async function fetchPage(s, yearFrom, yearTo, start) {
 
 export async function scrape(model, s, rates) {
   const allListings = [];
-  const year = model.year ?? null;
+  const yearFrom = s._year_from ?? null;
+  const yearTo   = s._year_to   ?? null;
   let start = 0;
 
   while (true) {
-    const html = await fetchPage(s, year, year, start || null);
+    const html = await fetchPage(s, yearFrom, yearTo, start || null);
     const data = parseNextData(html);
     if (!data) throw new Error('subito.it: no __NEXT_DATA__ found');
 
@@ -86,7 +87,11 @@ export async function scrape(model, s, rates) {
       if (!priceEur || priceEur < 5000) continue;
 
       // Year filter
-      if (year && itemYear !== null && parseInt(itemYear) !== year) continue;
+      if (itemYear !== null) {
+        const y = parseInt(itemYear);
+        if (yearFrom && y < yearFrom) continue;
+        if (yearTo   && y > yearTo)   continue;
+      }
 
       const versionKeywords = s.version_keywords || [];
       const version = versionKeywords.find(k => titleLc.includes(k.toLowerCase())) ?? null;
@@ -131,6 +136,10 @@ export async function scrape(model, s, rates) {
     await new Promise(r => setTimeout(r, 1500));
   }
 
-  console.log(`  [subito.it] Matched: ${allListings.length}`);
-  return allListings;
+  const seen = new Set();
+  const deduped = allListings.filter(l => seen.has(l.id) ? false : seen.add(l.id));
+  if (deduped.length < allListings.length)
+    console.log(`  [subito.it] Deduped: ${allListings.length - deduped.length} duplicates removed`);
+  console.log(`  [subito.it] Matched: ${deduped.length}`);
+  return deduped;
 }

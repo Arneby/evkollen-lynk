@@ -1,12 +1,12 @@
 ---
-const WORKER_URL = 'https://evkollen-lynk-worker.gurka.workers.dev';
+const WORKER_URL = 'https://evkollen-worker.gurka.workers.dev';
 ---
 <!DOCTYPE html>
 <html lang="sv">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>EVkollen Lynk – årsmodell 2025</title>
+  <title>EV Kollen</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/victor-mono@1.5.6/VictorMonoAll.min.css">
   <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.54.0/dist/apexcharts.min.js"></script>
   <style is:global>
@@ -160,8 +160,8 @@ const WORKER_URL = 'https://evkollen-lynk-worker.gurka.workers.dev';
 </head>
 <body>
   <header>
-    <h1>EVkollen Lynk – årsmodell 2025</h1>
-    
+    <h1>EV Kollen</h1>
+    <span>KM0 · Spanien</span>
   </header>
 
   <main>
@@ -176,9 +176,14 @@ const WORKER_URL = 'https://evkollen-lynk-worker.gurka.workers.dev';
 
   <script define:vars={{ WORKER_URL }}>
     const MODELS = [
-      { id: 'lynk-01-phev-more', label: 'Lynk & Co 01 More' },
-      { id: 'lynk-02-phev-more', label: 'Lynk & Co 02 More' },
-      { id: 'lynk-08-phev-more', label: 'Lynk & Co 08 More' },
+      { id: 'lynk-01-phev-more',      label: 'Lynk 01 More' },
+      { id: 'lynk-08-phev-more',      label: 'Lynk 08 More' },
+      { id: 'rr-evoque-p300e',        label: 'Evoque P300e' },
+      { id: 'lr-disco-sport-p300e',   label: 'Disco Sport P300e' },
+      { id: 'citroen-ec5-aircross-ev', label: 'eC5 Aircross' },
+      { id: 'bmw-ix3-g08',            label: 'BMW iX3' },
+      { id: 'peugeot-e3008-bev',       label: 'Peugeot e-3008' },
+      { id: 'vw-id4',                 label: 'VW ID.4' },
     ];
 
     const SOURCE_META = {
@@ -235,12 +240,14 @@ const WORKER_URL = 'https://evkollen-lynk-worker.gurka.workers.dev';
       const prices = listings.map(l => l.price_eur ?? l.price).filter(Boolean);
       const kms = listings.map(l => l.km).filter(v => v != null);
       const avg = arr => arr.length ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length) : null;
+      const lastSeen = listings.map(l => l.last_seen).filter(Boolean).sort().pop() ?? null;
       document.getElementById('stats').innerHTML = [
         { label: 'Annonser',   value: listings.length },
         { label: 'Lägsta',     value: prices.length ? '€' + fmt(Math.min(...prices)) : '–' },
         { label: 'Högsta',     value: prices.length ? '€' + fmt(Math.max(...prices)) : '–' },
         { label: 'Snittpris',  value: prices.length ? '€' + fmt(avg(prices)) : '–' },
         { label: 'Snitt km',   value: kms.length   ? fmt(avg(kms)) + ' km' : '–' },
+        { label: 'Skrapades',  value: fmtDate(lastSeen) },
       ].map(s => `<div class="stat"><div class="stat-label">${s.label}</div><div class="stat-value">${s.value}</div></div>`).join('');
     }
 
@@ -270,7 +277,7 @@ const WORKER_URL = 'https://evkollen-lynk-worker.gurka.workers.dev';
               </tr>`).join('')}
             </tbody>
           </table>
-          <p class="updated">Uppdaterat: ${new Date().toLocaleString('sv-SE')}</p>
+          <p class="updated">Skrapades: ${fmtDate([...listings].map(l => l.last_seen).filter(Boolean).sort().pop())}</p>
         </div>`;
 
       document.querySelectorAll('th[data-key]').forEach(th =>
@@ -280,6 +287,12 @@ const WORKER_URL = 'https://evkollen-lynk-worker.gurka.workers.dev';
           renderTable(allData[activeModel] || []);
         })
       );
+    }
+
+    function fmtPeriodLabel(period, granularity) {
+      if (granularity === 'week') return period.replace(/^\d{4}-/, '');
+      const [, m, d] = period.split('-');
+      return `${parseInt(d)}/${parseInt(m)}`;
     }
 
     function renderChart(modelId) {
@@ -294,25 +307,55 @@ const WORKER_URL = 'https://evkollen-lynk-worker.gurka.workers.dev';
         SWEDISH_SOURCES.has(r.source) ? { ...r, source: 'sverige' } : r
       );
 
-      const days = [...new Set(normalised.map(r => r.day))].sort();
+      // Build ordered period list (already sorted by sort_key from API)
+      const periodMeta = new Map(); // period → { granularity, label }
+      for (const r of normalised) {
+        if (!periodMeta.has(r.period))
+          periodMeta.set(r.period, { granularity: r.granularity, label: fmtPeriodLabel(r.period, r.granularity) });
+      }
+      const periods = [...periodMeta.keys()];
+
+      // Numeric x-axis: weekly periods spaced 2 units apart, daily periods 1 unit apart
+      const xValues  = new Map(); // period → numeric x
+      const xToLabel = {};        // x → display label
+      let numWeeks = 0;
+      for (const p of periods) { if (periodMeta.get(p).granularity === 'week') numWeeks++; }
+      let weekIdx = 0, dayIdx = 0;
+      for (const p of periods) {
+        const { granularity, label } = periodMeta.get(p);
+        const xv = granularity === 'week'
+          ? weekIdx++ * 2
+          : (numWeeks > 0 ? (numWeeks - 1) * 2 + 2 : 0) + dayIdx++;
+        xValues.set(p, xv);
+        xToLabel[xv] = label;
+      }
+      const maxX       = periods.length > 0 ? xValues.get(periods[periods.length - 1]) : 0;
+      const lastWeekX  = numWeeks > 0 ? (numWeeks - 1) * 2 : null;
+      const firstDayX  = numWeeks > 0 && periods.some(p => periodMeta.get(p).granularity === 'day')
+        ? (numWeeks - 1) * 2 + 2 : null;
+      const separatorX = lastWeekX !== null && firstDayX !== null
+        ? (lastWeekX + firstDayX) / 2 : null;
+
       const sources = [...new Set(normalised.map(r => r.source))];
 
       const series = sources.map(src => {
         const meta = SOURCE_META[src] || { flag: '', color: '#888', name: src };
-        const byDay = {};
+        const byPeriod = {};
         for (const r of normalised.filter(r => r.source === src)) {
-          if (!byDay[r.day]) byDay[r.day] = { sum: 0, n: 0 };
-          byDay[r.day].sum += r.avg_price_eur * r.count;
-          byDay[r.day].n   += r.count;
+          if (!byPeriod[r.period]) byPeriod[r.period] = { sum: 0, n: 0 };
+          byPeriod[r.period].sum += r.avg_price_eur * r.count;
+          byPeriod[r.period].n   += r.count;
         }
         return {
           name: `${meta.flag} ${meta.country ?? src}`,
-          data: days.map(d => byDay[d] ? Math.round(byDay[d].sum / byDay[d].n) : null),
+          data: periods.map(p => ({
+            x: xValues.get(p),
+            y: byPeriod[p] ? Math.round(byPeriod[p].sum / byPeriod[p].n) : null,
+          })),
         };
       });
 
       const sourcesLabels = sources.map(src => (SOURCE_META[src] || {}).sourcesLabel ?? src);
-
       const colors        = sources.map(src => (SOURCE_META[src] || { color: '#888' }).color);
       const markerStrokes = sources.map(src => (SOURCE_META[src] || { markerStroke: '#888' }).markerStroke);
 
@@ -334,12 +377,21 @@ const WORKER_URL = 'https://evkollen-lynk-worker.gurka.workers.dev';
           size: 7,
           strokeColors: markerStrokes,
           strokeWidth: 3,
-          fillOpacity: 0,
+          fillOpacity: 1,
           hover: { size: 9, sizeOffset: 0 },
         },
+        annotations: separatorX !== null ? {
+          xaxis: [{ x: separatorX, borderColor: '#cccccc', strokeDashArray: 5, borderWidth: 1 }]
+        } : {},
         xaxis: {
-          categories: days,
-          labels: { style: { fontFamily: "'Victor Mono', monospace", fontSize: '12px' } },
+          type: 'numeric',
+          min: 0,
+          max: maxX,
+          tickAmount: maxX,
+          labels: {
+            formatter: v => xToLabel[Math.round(v)] ?? '',
+            style: { fontFamily: "'Victor Mono', monospace", fontSize: '12px' },
+          },
           axisBorder: { show: false },
           axisTicks: { show: false },
         },
@@ -352,6 +404,7 @@ const WORKER_URL = 'https://evkollen-lynk-worker.gurka.workers.dev';
         tooltip: {
           shared: true,
           intersect: false,
+          x: { formatter: v => xToLabel[Math.round(v)] ?? '' },
           y: { formatter: v => v != null ? '€' + Math.round(v).toLocaleString('sv-SE') : '–' },
           style: { fontFamily: "'Victor Mono', monospace", fontSize: '12px' },
         },

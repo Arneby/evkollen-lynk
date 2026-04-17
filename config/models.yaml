@@ -4,7 +4,8 @@ models:
     model: "01"
     variant: More
     powertrain: phev
-    year: 2025
+    year_from: 2025
+    year_to: 2026
     sources:
       coches_net:
         make_id: 1404
@@ -14,6 +15,7 @@ models:
       bytbil:
         make: "Lynk & Co"
         model: "01"
+        mileage_max: 10000
         filter:
           include: ["More"]
       subito:
@@ -32,7 +34,8 @@ models:
     model: "02"
     variant: More
     powertrain: phev
-    year: 2025
+    year_from: 2025
+    year_to: 2026
     sources:
       coches_net:
         make_id: 1404
@@ -42,6 +45,7 @@ models:
       bytbil:
         make: "Lynk & Co"
         model: "02"
+        mileage_max: 10000
         filter:
           include: ["More"]
       subito:
@@ -60,7 +64,8 @@ models:
     model: "08"
     variant: More
     powertrain: phev
-    year: 2025
+    year_from: 2025
+    year_to: 2026
     sources:
       coches_net:
         make_id: 1404
@@ -70,12 +75,13 @@ models:
       bytbil:
         make: "Lynk & Co"
         model: "08"
+        mileage_max: 10000
         filter:
           include: ["More"]
       subito:
-        query: "Lynk 08 PHEV"
+        query: "Lynk & Co 08"
         filter:
-          include: ["08"]
+          include: ["More"]
       autoscout:
         make_slug: "lynk-%26-co"
         model_slug: "08"
